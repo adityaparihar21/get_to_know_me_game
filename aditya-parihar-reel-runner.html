@@ -210,7 +210,9 @@
     z-index: 10;
   }
   
-  #math-game.active {
+  #math-game.active,
+  #memory-game.active,
+  #sudoku-game.active {
     display: flex;
   }
 
@@ -225,10 +227,26 @@
   
   /* Memory Game CSS */
   #memory-game {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
   }
 
   /* Sudoku Game CSS */
   #sudoku-game {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+  
+  .reveal-enter {
+    animation: slideUp3D 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  @keyframes slideUp3D {
+    0% { transform: translateY(100px) rotateX(-20deg) scale(0.9); opacity: 0; }
+    100% { transform: translateY(0) rotateX(0deg) scale(1); opacity: 1; }
   }
 
   #scanlines{
@@ -384,9 +402,16 @@
     background:
       radial-gradient(circle at center, rgba(18,18,28,0.88) 0%, rgba(8,8,12,0.95) 72%),
       rgba(0,0,0,0.4);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
   }
 
-  .hidden{ display:none !important; }
+  .hidden { 
+    opacity: 0 !important; 
+    visibility: hidden !important; 
+    pointer-events: none !important;
+  }
 
   .screen-card{
     width:min(680px, 100%);
@@ -717,9 +742,17 @@
 
   .film-grid{
     display:grid;
-    grid-template-columns:repeat(2, minmax(0,1fr));
-    gap:14px;
-    margin-top:16px;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+    margin-top:20px;
+  }
+
+  .film-item{
+    width: 100%;
+    aspect-ratio: 2/3;
+    border-radius:8px;
+    overflow:hidden;
+    position:relative;
   }
 
   .film-poster{
@@ -1147,6 +1180,34 @@
     }
   }
 
+  /* Mobile specific overrides */
+  @media (max-width: 768px){
+    #start-btn {
+      display: none !important;
+    }
+    #mobile-warning {
+      display: block !important;
+      color: var(--gold);
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+    
+    #stage{
+      aspect-ratio: 9 / 16;
+    }
+    .hud-panel{
+      padding:10px 12px;
+    }
+    .hud-big{ font-size:16px; }
+    
+    .film-grid{
+      grid-template-columns: repeat(2, 1fr);
+      gap:8px;
+    }
+  }
+
   /* Very small phones */
   @media (max-width: 390px){
     #stage{
@@ -1173,6 +1234,21 @@
       gap:8px;
     }
   }
+
+  /* Desktop and Mobile display helpers */
+  @media (min-width: 769px) {
+    .mobile-only {
+      display: none !important;
+    }
+  }
+  @media (max-width: 768px) {
+    .desktop-only {
+      display: none !important;
+    }
+    .mobile-only {
+      display: block !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1188,13 +1264,13 @@
           <div id="math-options" style="display: flex; gap: 10px;"></div>
         </div>
         <div id="memory-game" class="game-view">
-          <h2 style="font-family: 'Courier New'; margin-bottom: 20px; text-align: center; margin-top: 40px; color: white;">MEMORY MATCH</h2>
-          <div id="memory-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 20px; max-width: 500px; margin: 0 auto;"></div>
+          <h2 style="font-family: 'Courier New'; margin-bottom: 20px; text-align: center; color: white;">MEMORY MATCH</h2>
+          <div id="memory-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 20px; max-width: 400px; width: 100%;"></div>
         </div>
         <div id="sudoku-game" class="game-view">
-          <h2 style="font-family: 'Courier New'; margin-bottom: 20px; text-align: center; margin-top: 40px; color: white;">THE VAULT CODE</h2>
-          <div id="sudoku-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px; background: white; max-width: 300px; margin: 0 auto;"></div>
-          <div id="sudoku-numpad" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-width: 300px; margin: 20px auto;"></div>
+          <h2 style="font-family: 'Courier New'; margin-bottom: 20px; text-align: center; color: white;">THE VAULT CODE</h2>
+          <div id="sudoku-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; padding: 2px; background: white; max-width: 360px; width: 100%;"></div>
+          <div id="sudoku-numpad" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-width: 360px; width: 100%; margin-top: 20px;"></div>
         </div>
         <div id="scanlines"></div>
         <div id="vignette"></div>
@@ -1209,8 +1285,9 @@
             </div>
           </div>
 
-          <div class="hud-center">
+          <div class="hud-center" style="display: flex; gap: 10px; pointer-events: auto;">
             <button id="mute-btn" class="sound-btn" title="Toggle sound">SOUND: ON</button>
+            <button id="pause-btn" class="sound-btn" title="Pause Game">|| PAUSE</button>
           </div>
 
           <div class="hud-panel hud-right">
@@ -1222,18 +1299,39 @@
         <!-- Start screen -->
         <div id="start-screen" class="screen">
           <div class="screen-card" style="text-align: center;">
-            <div class="eyebrow">Interactive Intro / Arcade Portfolio</div>
-            <h1 class="marquee-title" style="margin-top: 10px;">Wanna know about me more?</h1>
-            <div class="marquee-sub" style="margin-top: 10px;">Unlock my story through a series of puzzles.</div>
+            <div class="desktop-only">
+              <div class="eyebrow">Interactive Intro / Arcade Portfolio</div>
+              <h1 class="marquee-title" style="margin-top: 10px;">Wanna know about me more?</h1>
+              <div class="marquee-sub" style="margin-top: 10px;">Unlock my story through a series of puzzles.</div>
+              <div class="btn-row" style="margin-top: 30px;">
+                <button class="btn btn-primary" id="start-btn">Let's Go</button>
+              </div>
+            </div>
 
-            <div class="btn-row" style="margin-top: 30px;">
-              <button class="btn btn-primary" id="start-btn">Let's Go</button>
+            <div class="mobile-only" style="display: none;">
+              <h1 class="marquee-title" style="font-size: clamp(24px, 6vw, 32px); margin-bottom: 12px; line-height: 1.1;">Introduction Game</h1>
+              <p style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; color: var(--gold-soft); opacity: 0.8; line-height: 1.6; text-transform: uppercase;">
+                (Only for big screens or laptops.<br>Not designed for the current device<br>on which you are watching the site)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause screen -->
+        <div id="pause-screen" class="screen hidden">
+          <div class="screen-card" style="text-align: center;">
+            <div class="eyebrow">Paused</div>
+            <h2 class="marquee-title" style="margin-top: 10px;">TAKE A BREATH</h2>
+            <div class="btn-row" style="margin-top: 30px; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+              <button class="btn btn-primary" id="resume-btn" style="width: 200px;">Resume</button>
+              <button class="btn btn-primary" id="restart-level-btn" style="width: 200px;">Restart Level</button>
+              <button class="btn btn-primary" id="quit-btn" style="width: 200px;">Quit</button>
             </div>
           </div>
         </div>
 
         <!-- Reveal overlay -->
-        <div id="reveal-overlay" class="screen hidden"></div>
+        <div id="reveal-overlay" class="screen hidden" style="perspective: 1000px;"></div>
 
         <!-- Game over -->
         <div id="fail-screen" class="screen hidden">
@@ -1341,8 +1439,9 @@
   const Sound = (function(){
     let ctx = null;
     let enabled = true;
-    let musicTimer = null;
-    let musicStep = 0;
+    let bgmAudio = new Audio("/bgm.mp3");
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.5;
 
     function ensureCtx(){
       if(!ctx){
@@ -1391,24 +1490,13 @@
       tone(784, 0.16, "triangle", 0.10, 0.18);
     }
 
-    const bassPattern = [98, 98, 131, 98, 110, 110, 147, 110];
-
     function startMusic(){
-      stopMusic();
-      musicStep = 0;
-      musicTimer = setInterval(()=>{
-        if(!enabled) return;
-        const f = bassPattern[musicStep % bassPattern.length];
-        tone(f, 0.18, "triangle", 0.035);
-        musicStep++;
-      }, 260);
+      if(!enabled) return;
+      bgmAudio.play().catch(() => {}); // catch auto-play restrictions
     }
 
     function stopMusic(){
-      if(musicTimer){
-        clearInterval(musicTimer);
-        musicTimer = null;
-      }
+      bgmAudio.pause();
     }
 
     function toggle(){
@@ -1430,6 +1518,39 @@
     const on = Sound.toggle();
     document.getElementById("mute-btn").textContent = "SOUND: " + (on ? "ON" : "OFF");
   });
+  
+  function pauseGame() {
+    if (state !== "playing") return;
+    state = "paused";
+    Sound.stopMusic();
+    document.getElementById("pause-screen").classList.remove("hidden");
+  }
+  function resumeGame() {
+    if (state !== "paused") return;
+    state = "playing";
+    Sound.startMusic();
+    document.getElementById("pause-screen").classList.add("hidden");
+  }
+  function restartLevel() {
+    if (state !== "paused" && state !== "fail") return;
+    startGame();
+  }
+  function quitGame() {
+    state = "start";
+    currentLevel = 1;
+    score = 0;
+    lives = 3;
+    Sound.stopMusic();
+    document.getElementById("pause-screen").classList.add("hidden");
+    document.getElementById("start-screen").classList.remove("hidden");
+    document.querySelectorAll(".game-view").forEach(el => el.classList.remove("active"));
+    updateHud();
+  }
+
+  document.getElementById("pause-btn").addEventListener("click", pauseGame);
+  document.getElementById("resume-btn").addEventListener("click", resumeGame);
+  document.getElementById("restart-level-btn").addEventListener("click", restartLevel);
+  document.getElementById("quit-btn").addEventListener("click", quitGame);
 
   /* =========================================================
      CANVAS + GAME SETUP
@@ -1590,7 +1711,9 @@
     document.getElementById("start-screen").classList.add("hidden");
     document.getElementById("fail-screen").classList.add("hidden");
     document.getElementById("reveal-overlay").classList.add("hidden");
+    document.getElementById("pause-screen").classList.add("hidden");
     updateHud();
+    Sound.startMusic();
   }
 
   /* =========================================================
@@ -1625,6 +1748,7 @@
      UPDATE
      ========================================================= */
   function update(){
+    if (currentLevel !== 1) return;
     frame++;
     speed = 6 + Math.min(4, score / 150);
 
@@ -1761,6 +1885,7 @@
      DRAW
      ========================================================= */
   function draw(){
+    if (currentLevel !== 1) return;
     ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
 
     drawBackground();
@@ -2180,39 +2305,44 @@
     flippedCards = [];
   }
   let sudokuGrid = [];
-  let sudokuSolution = [
-    [1, 2, 3, 4],
-    [3, 4, 1, 2],
-    [2, 1, 4, 3],
-    [4, 3, 2, 1]
-  ];
+  let sudokuSolution = [];
   let selectedCell = null;
 
   function startSudokuGame() {
-    // Generate random 4x4
     let sol = [
-      [1, 2, 3, 4],
-      [3, 4, 1, 2],
-      [2, 1, 4, 3],
-      [4, 3, 2, 1]
+      [1, 2, 3, 4, 5, 6],
+      [4, 5, 6, 1, 2, 3],
+      [2, 3, 1, 5, 6, 4],
+      [5, 6, 4, 2, 3, 1],
+      [3, 1, 2, 6, 4, 5],
+      [6, 4, 5, 3, 1, 2]
     ];
     
-    const nums = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
+    // Swap numbers 1-6
+    const nums = [1, 2, 3, 4, 5, 6].sort(() => Math.random() - 0.5);
     sol = sol.map(row => row.map(val => nums[val - 1]));
     
+    // Swap rows within blocks (0,1), (2,3), (4,5)
     if (Math.random() > 0.5) { let t = sol[0]; sol[0] = sol[1]; sol[1] = t; }
     if (Math.random() > 0.5) { let t = sol[2]; sol[2] = sol[3]; sol[3] = t; }
+    if (Math.random() > 0.5) { let t = sol[4]; sol[4] = sol[5]; sol[5] = t; }
     
-    if (Math.random() > 0.5) { sol.forEach(row => { let t = row[0]; row[0] = row[1]; row[1] = t; }); }
-    if (Math.random() > 0.5) { sol.forEach(row => { let t = row[2]; row[2] = row[3]; row[3] = t; }); }
+    // Swap cols within blocks (0,1,2), (3,4,5)
+    function swapCols(s, c1, c2) {
+      s.forEach(row => { let t = row[c1]; row[c1] = row[c2]; row[c2] = t; });
+    }
+    const b1 = [0, 1, 2].sort(() => Math.random() - 0.5);
+    swapCols(sol, 0, b1[0]); swapCols(sol, 1, b1[1]); swapCols(sol, 2, b1[2]);
+    const b2 = [3, 4, 5].sort(() => Math.random() - 0.5);
+    swapCols(sol, 3, b2[0]); swapCols(sol, 4, b2[1]); swapCols(sol, 5, b2[2]);
     
     sudokuSolution = JSON.parse(JSON.stringify(sol));
     sudokuGrid = JSON.parse(JSON.stringify(sol));
 
     let removed = 0;
-    while(removed < 10) {
-      let r = Math.floor(Math.random() * 4);
-      let c = Math.floor(Math.random() * 4);
+    while(removed < 20) {
+      let r = Math.floor(Math.random() * 6);
+      let c = Math.floor(Math.random() * 6);
       if (sudokuGrid[r][c] !== 0) {
         sudokuGrid[r][c] = 0;
         removed++;
@@ -2224,42 +2354,46 @@
     const numpadEl = document.getElementById("sudoku-numpad");
     gridEl.innerHTML = '';
     numpadEl.innerHTML = '';
+    gridEl.style.background = "transparent";
+    gridEl.style.border = "2px solid rgba(232,178,61,0.3)";
+    gridEl.style.borderRadius = "8px";
 
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
         const cell = document.createElement("div");
         cell.style.width = "100%";
         cell.style.aspectRatio = "1/1";
         cell.style.display = "flex";
         cell.style.alignItems = "center";
         cell.style.justifyContent = "center";
-        cell.style.fontSize = "24px";
+        cell.style.fontSize = "22px";
         cell.style.fontWeight = "bold";
-        cell.style.color = "#14141c";
-        cell.style.border = "1px solid #ccc";
+        cell.style.color = "#e8b23d";
+        cell.style.border = "1px solid rgba(255,255,255,0.1)";
         cell.style.cursor = "pointer";
+        cell.style.transition = "background 0.2s";
         
-        if (c === 1) cell.style.borderRight = "2px solid #000";
-        if (r === 1) cell.style.borderBottom = "2px solid #000";
+        if (c === 2) cell.style.borderRight = "2px solid rgba(232,178,61,0.4)";
+        if (r === 1 || r === 3) cell.style.borderBottom = "2px solid rgba(232,178,61,0.4)";
 
         const val = sudokuGrid[r][c];
         if (val !== 0) {
           cell.textContent = val;
-          cell.style.backgroundColor = "#e0e0e0";
+          cell.style.backgroundColor = "rgba(255,255,255,0.05)";
         } else {
           cell.dataset.r = r;
           cell.dataset.c = c;
           cell.addEventListener("click", () => {
-            if (selectedCell) selectedCell.style.backgroundColor = "white";
+            if (selectedCell) selectedCell.style.backgroundColor = "transparent";
             selectedCell = cell;
-            cell.style.backgroundColor = "#e8b23d";
+            cell.style.backgroundColor = "rgba(232,178,61,0.2)";
           });
         }
         gridEl.appendChild(cell);
       }
     }
 
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 6; i++) {
       const btn = document.createElement("button");
       btn.className = "btn btn-primary";
       btn.textContent = i;
@@ -2280,8 +2414,8 @@
   function checkSudoku() {
     let complete = true;
     let correct = true;
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
         if (sudokuGrid[r][c] === 0) complete = false;
         if (sudokuGrid[r][c] !== 0 && sudokuGrid[r][c] !== sudokuSolution[r][c]) correct = false;
       }
@@ -2300,18 +2434,51 @@
   function openReveal(milestoneScore){
     state = "reveal";
     Sound.reveal();
-    Sound.stopMusic();
-
-    const overlay = document.getElementById("reveal-overlay");
-    overlay.innerHTML = "";
-    overlay.appendChild(buildCard(milestoneScore));
-    overlay.classList.remove("hidden");
+    
+    // Slight delay before reveal appears for a dramatic effect
+    setTimeout(() => {
+      const overlay = document.getElementById("reveal-overlay");
+      overlay.innerHTML = "";
+      const card = buildCard(milestoneScore);
+      overlay.appendChild(card);
+      overlay.classList.remove("hidden");
+      
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          card.classList.add("reveal-enter");
+        });
+      }, 50);
+      
+      // Particle burst behind the ticket
+      for (let i = 0; i < 50; i++) {
+        const p = document.createElement("div");
+        p.style.position = "absolute";
+        p.style.width = "4px";
+        p.style.height = "4px";
+        p.style.background = "#e8b23d";
+        p.style.borderRadius = "50%";
+        p.style.left = "50%";
+        p.style.top = "50%";
+        p.style.zIndex = "-1";
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 200;
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist;
+        p.style.transition = "transform 1s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 1s ease";
+        p.style.transform = `translate(0, 0)`;
+        card.appendChild(p);
+        
+        // Trigger reflow
+        void p.offsetWidth;
+        p.style.transform = `translate(${tx}px, ${ty}px) scale(0)`;
+        p.style.opacity = "0";
+      }
+    }, 500);
   }
 
   function closeReveal(){
     document.getElementById("reveal-overlay").classList.add("hidden");
     state = "playing";
-    Sound.startMusic();
   }
 
   function buildCard(m){
@@ -2487,6 +2654,23 @@
   resize();
   updateHud();
   requestAnimationFrame(loop);
+
+  // Auto-pause when scrolling out of view
+  const gameSection = document.getElementById("app-shell");
+  if (gameSection && window.IntersectionObserver) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) {
+          if (state === "playing") {
+            pauseGame();
+          } else {
+            Sound.stopMusic();
+          }
+        }
+      });
+    }, { threshold: 0.1 });
+    observer.observe(gameSection);
+  }
 
 })();
 </script>
